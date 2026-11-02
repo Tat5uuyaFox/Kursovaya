@@ -1,3 +1,4 @@
+// Все проекты живут здесь — добавил карточку в массив, и галерея сама её нарисует.
 const projects = [
   {
     type: "flat",
@@ -87,6 +88,7 @@ const projectTypes = { flat: "Квартира", house: "Дом", office: "Оф�
 const imageHost = "assets/projects/";
 const projectsContainer = document.querySelector("#projects");
 
+// Из обычного объекта собираем карточку. Шаблон большой, зато вся разметка проекта в одном месте.
 function createProjectCard(project, index) {
   const cardClass = project.featured
     ? "project-card project-card--featured"
@@ -106,6 +108,7 @@ function createProjectCard(project, index) {
     </article>`;
 }
 
+// Фильтр оставляет подходящие проекты и заново показывает карточки без перезагрузки страницы.
 function renderProjects(filter = "all") {
   const visibleProjects = projects.filter(
     (project) => filter === "all" || project.type === filter,
@@ -116,6 +119,7 @@ function renderProjects(filter = "all") {
     .forEach((card) => revealObserver.observe(card));
 }
 
+// Следим за появлением блоков: пока они далеко, не тратим анимацию впустую.
 const revealObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -141,6 +145,7 @@ document.querySelectorAll(".filter").forEach((button) => {
 });
 renderProjects();
 
+// Счётчики запускаются один раз — цифры не должны устраивать марафон при каждом скролле.
 let countersStarted = false;
 const statsObserver = new IntersectionObserver(([entry]) => {
   if (!entry.isIntersecting || countersStarted) return;
@@ -163,22 +168,202 @@ const statsObserver = new IntersectionObserver(([entry]) => {
 });
 statsObserver.observe(document.querySelector(".stats"));
 
-document.querySelector("#files").addEventListener("change", (event) => {
-  const count = event.target.files.length;
-  document.querySelector(".file").childNodes[0].textContent = count
-    ? `✓ Выбрано файлов: ${count} `
-    : "＋ Прикрепить фото ";
+// Калькулятор закрыт, пока его не позвали. Esc и клик по фону разруливает сам <dialog>.
+const calculatorDialog = document.querySelector("#calculator-dialog");
+document
+  .querySelector("#calculator-open")
+  .addEventListener("click", () => calculatorDialog.showModal());
+document
+  .querySelector(".calculator-close")
+  .addEventListener("click", () => calculatorDialog.close());
+calculatorDialog.addEventListener("click", (event) => {
+  if (event.target === calculatorDialog) calculatorDialog.close();
 });
 
-document.querySelector("#lead").addEventListener("submit", (event) => {
+// Считаем ориентир на лету. Цифры демонстрационные — это калькулятор, не гадалка по штукатурке.
+const calculator = document.querySelector("#calculator");
+const areaSlider = document.querySelector("#calc-area");
+const areaValue = document.querySelector("#calc-area-value");
+const estimateMin = document.querySelector("#estimate-min");
+const estimateMax = document.querySelector("#estimate-max");
+const estimatePrice = document.querySelector(".estimate-price");
+const rubles = new Intl.NumberFormat("ru-RU", {
+  style: "currency",
+  currency: "RUB",
+  maximumFractionDigits: 0,
+});
+const workRates = {
+  cosmetic: [7000, 12000],
+  capital: [16000, 26000],
+  designer: [28000, 45000],
+};
+const objectFactors = { flat: 1, house: 1.2, office: 1.15 };
+const materialFactors = { economy: 0.85, standard: 1, premium: 1.3 };
+
+function calculateEstimate() {
+  const area = Number(areaSlider.value);
+  const [rateMin, rateMax] =
+    workRates[document.querySelector("#calc-work").value];
+  const objectFactor =
+    objectFactors[document.querySelector("#calc-object").value];
+  const materialFactor =
+    materialFactors[document.querySelector("#calc-material").value];
+  const demolitionCost = document.querySelector("#calc-demolition").checked
+    ? 2500 * area
+    : 0;
+  const min =
+    Math.round(
+      (area * rateMin * objectFactor * materialFactor + demolitionCost) / 10000,
+    ) * 10000;
+  const max =
+    Math.round(
+      (area * rateMax * objectFactor * materialFactor + demolitionCost) / 10000,
+    ) * 10000;
+
+  areaValue.textContent = area;
+  estimateMin.textContent = rubles.format(min);
+  estimateMax.textContent = rubles.format(max);
+  estimatePrice.classList.remove("updated");
+  requestAnimationFrame(() => estimatePrice.classList.add("updated"));
+  return { min, max };
+}
+
+calculator.querySelectorAll("select, input").forEach((control) => {
+  control.addEventListener("input", calculateEstimate);
+  control.addEventListener("change", calculateEstimate);
+});
+calculateEstimate();
+
+// Переносим итог в заявку, чтобы не заставлять человека вводить одно и то же дважды.
+document.querySelector("#calc-to-form").addEventListener("click", () => {
+  const { min, max } = calculateEstimate();
+  const objectType = document.querySelector("#calc-object").value;
+  const projectType = document.querySelector("#lead-type");
+  const projectLabels = {
+    flat: "Ремонт квартиры",
+    house: "Ремонт дома",
+    office: "Ремонт офиса",
+  };
+  projectType.value = projectLabels[objectType];
+  document.querySelector("#lead-budget").value =
+    `${rubles.format(min)} — ${rubles.format(max)}`;
+  document.querySelector("#lead-description").value =
+    `Расчёт с сайта: ${areaSlider.value} м², ${document.querySelector("#calc-work").selectedOptions[0].text.toLowerCase()}.`;
+  calculatorDialog.close();
+  setTimeout(() => {
+    document
+      .querySelector("#contact")
+      .scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 80);
+});
+
+// Готовим форму: телефон форматируем, бюджет очищаем, фото проверяем до выбора.
+const leadForm = document.querySelector("#lead");
+const phoneInput = document.querySelector("#lead-phone");
+const budgetInput = document.querySelector("#lead-budget");
+const photoInput = document.querySelector("#files");
+const formHint = document.querySelector("#form-hint");
+const photoLabel = document.querySelector(".file");
+
+function formatRussianPhone(value) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("7") || digits.startsWith("8"))
+    digits = digits.slice(1);
+  digits = digits.slice(0, 10);
+  if (!digits) return "";
+
+  let formatted = "+7";
+  if (digits.length) formatted += ` (${digits.slice(0, 3)}`;
+  if (digits.length >= 3) formatted += ")";
+  if (digits.length > 3) formatted += ` ${digits.slice(3, 6)}`;
+  if (digits.length > 6) formatted += `-${digits.slice(6, 8)}`;
+  if (digits.length > 8) formatted += `-${digits.slice(8, 10)}`;
+  return formatted;
+}
+
+phoneInput.addEventListener("input", () => {
+  const formatted = formatRussianPhone(phoneInput.value);
+  phoneInput.value = formatted;
+  phoneInput.setCustomValidity(
+    formatted.replace(/\D/g, "").length === 11
+      ? ""
+      : "Введите номер из 10 цифр после +7.",
+  );
+});
+
+budgetInput.addEventListener("input", () => {
+  const digits = budgetInput.value.replace(/\D/g, "").slice(0, 9);
+  budgetInput.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+});
+
+// Браузер сам рисует список выбранных файлов, а мы выставляем понятные рамки.
+photoInput.addEventListener("change", () => {
+  const photos = [...photoInput.files];
+  const tooMany = photos.length > 5;
+  const tooLarge = photos.some((photo) => photo.size > 10 * 1024 * 1024);
+  const wrongType = photos.some(
+    (photo) => !["image/jpeg", "image/png", "image/webp"].includes(photo.type),
+  );
+
+  let error = "";
+  if (tooMany) error = "Можно прикрепить не больше пяти фотографий.";
+  else if (tooLarge) error = "Каждое фото должно весить не больше 10 МБ.";
+  else if (wrongType) error = "Подойдут изображения JPG, PNG или WebP.";
+
+  photoInput.setCustomValidity(error);
+  photoLabel.classList.toggle("has-error", Boolean(error));
+  photoLabel.childNodes[0].textContent = error
+    ? `⚠ ${error} `
+    : photos.length
+      ? `✓ Выбрано фото: ${photos.length} `
+      : "＋ Прикрепить фото ";
+});
+
+// Ошибки подсвечиваем сразу у поля, чтобы не играть с пользователем в квест «найди косяк».
+leadForm.querySelectorAll("input, select, textarea").forEach((field) => {
+  field.addEventListener("input", () => {
+    field.classList.toggle("is-invalid", !field.checkValidity());
+    if (field.checkValidity()) formHint.textContent = "";
+  });
+});
+
+leadForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  const nameInput = document.querySelector("#lead-name");
+  nameInput.value = nameInput.value.trim();
+  phoneInput.setCustomValidity(
+    phoneInput.value.replace(/\D/g, "").length === 11
+      ? ""
+      : "Введите номер из 10 цифр после +7.",
+  );
+
+  if (!leadForm.reportValidity()) {
+    const firstInvalid = leadForm.querySelector(":invalid");
+    firstInvalid?.classList.add("is-invalid");
+    formHint.textContent =
+      "Проверь поля, отмеченные браузером, и попробуй ещё раз.";
+    firstInvalid?.focus();
+    return;
+  }
+
   const toast = document.querySelector("#toast");
+  toast.textContent =
+    "Всё заполнено! Это демо — для отправки заявки нужен сервер.";
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 3500);
-  event.target.reset();
+  setTimeout(() => toast.classList.remove("show"), 4000);
+  leadForm.reset();
+  phoneInput.setCustomValidity("");
+  photoInput.setCustomValidity("");
+  photoLabel.classList.remove("has-error");
+  photoLabel.childNodes[0].textContent = "＋ Прикрепить фото ";
+  leadForm
+    .querySelectorAll(".is-invalid")
+    .forEach((field) => field.classList.remove("is-invalid"));
+  formHint.textContent = "";
 });
 
-// Keep the page position visible and gently move the hero image with the scroll.
+// Полоса прокрутки показывает путь по странице, а обложка чуть-чуть едет вслед.
+// Прогресс прокрутки и лёгкий параллакс обложки обновляем в одном кадре браузера.
 const scrollProgress = document.querySelector(".scroll-progress");
 let scrollFrameRequested = false;
 window.addEventListener(
@@ -200,7 +385,7 @@ window.addEventListener(
   { passive: true },
 );
 
-// Give in-page links a consistent, eased scroll across browsers.
+// Ссылки на разделы скроллятся мягко, без телепортации в соседний район.
 document.querySelectorAll('a[href^="#"]').forEach((link) => {
   link.addEventListener("click", (event) => {
     const target = document.querySelector(link.getAttribute("href"));
@@ -216,12 +401,17 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
   });
 });
 
-// Smooth mouse-wheel scrolling while keeping native behavior in controls.
+// Колёсико сглаживаем, но поля ввода не трогаем — там пусть крутится как привыкло.
+// Уважение к системной настройке: если человек просит меньше движения, не спорим.
 const prefersReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 );
 let wheelTarget = window.scrollY;
 let wheelAnimationFrame = null;
+const wheelSpeed = 2; // На школьной мышке маленький шаг больше не будет ползти как черепаха.
+const wheelEasing = 0.3; // Быстрее догоняем цель, но движение остаётся мягким.
+const slowdownSectionIds = ["portfolio", "blueprint", "process"];
+const slowdownRadius = 240; // Скорость меняется постепенно на подходе к разделам и после них.
 
 window.addEventListener(
   "wheel",
@@ -231,7 +421,7 @@ window.addEventListener(
       event.ctrlKey ||
       !event.cancelable ||
       event.target.closest(
-        "input, textarea, select, button, [contenteditable='true']",
+        "dialog[open], input, textarea, select, button, [contenteditable='true']",
       )
     ) {
       return;
@@ -241,7 +431,10 @@ window.addEventListener(
     const delta = event.deltaMode === 1 ? event.deltaY * 32 : event.deltaY;
     const maxScroll =
       document.documentElement.scrollHeight - window.innerHeight;
-    wheelTarget = Math.max(0, Math.min(maxScroll, wheelTarget + delta * 1.15));
+    wheelTarget = Math.max(
+      0,
+      Math.min(maxScroll, wheelTarget + delta * wheelSpeed),
+    );
 
     if (wheelAnimationFrame !== null) return;
 
@@ -253,7 +446,23 @@ window.addEventListener(
         return;
       }
 
-      window.scrollTo(0, window.scrollY + distance * 0.16);
+      const currentY = window.scrollY;
+      const landmarks = slowdownSectionIds
+        .map((sectionId) => document.getElementById(sectionId))
+        .filter(Boolean)
+        .map((section) => section.getBoundingClientRect().top + currentY);
+      const nearestDistance = landmarks.length
+        ? Math.min(
+            ...landmarks.map((position) => Math.abs(position - currentY)),
+          )
+        : Infinity;
+
+      // Плавная S-кривая: возле точки медленнее, а разгон обратно без резкого пинка.
+      const proximity = Math.max(0, 1 - nearestDistance / slowdownRadius);
+      const smoothProximity = proximity * proximity * (3 - 2 * proximity);
+      const localEasing = wheelEasing * (1 - 0.58 * smoothProximity);
+      const scrollStep = distance * localEasing;
+      window.scrollTo(0, currentY + scrollStep);
       wheelAnimationFrame = requestAnimationFrame(animateWheel);
     };
 
@@ -262,7 +471,7 @@ window.addEventListener(
   { passive: false },
 );
 
-// If the user scrolls by another method, keep the wheel target in sync.
+// Если страницу сдвинули другим способом, синхронизируем цель колёсика.
 window.addEventListener(
   "scroll",
   () => {
@@ -271,7 +480,8 @@ window.addEventListener(
   { passive: true },
 );
 
-/* Interactive project viewer. Click any portfolio card to inspect it. */
+// Окно просмотра: нажми карточку, чтобы спокойно рассмотреть проект крупно.
+// Большое окно проекта: карточка превращается в мини-кейс, стрелки листают работы.
 const projectViewer = document.querySelector("#project-viewer");
 let activeProjectIndex = 0;
 
@@ -319,7 +529,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft") showProject(activeProjectIndex - 1);
 });
 
-// Let the photo catch a little light as the pointer moves across the card.
+// Подсветка и лёгкий наклон фотографии следуют за курсором.
 projectsContainer.addEventListener("pointermove", (event) => {
   const image = event.target.closest(".project-image");
   if (!image) return;
@@ -337,6 +547,7 @@ projectsContainer.addEventListener("pointermove", (event) => {
 });
 
 // Explain the architectural choices when visitors inspect the plan markers.
+// Подсказки к точкам на плане. Тексты лучше держать здесь, а не зашивать в HTML.
 const planNotes = [
   "Гостиную объединили с кухней: больше дневного света и места для друзей.",
   "Кухню спроектировали по рабочему треугольнику — меньше лишних шагов.",
@@ -349,4 +560,73 @@ document.querySelectorAll(".plan-hotspot").forEach((hotspot, index) => {
   hotspot.addEventListener("mouseenter", showNote);
   hotspot.addEventListener("focus", showNote);
   hotspot.addEventListener("click", showNote);
+});
+
+// GSAP is our little motion assistant. CSS and the regular JS still do the job if it is absent.
+if (window.gsap && !prefersReducedMotion.matches) {
+  // Hero comes in piece by piece, like opening the door to the finished room.
+  window.gsap.from(".hero-content > *", {
+    autoAlpha: 0,
+    y: 24,
+    duration: 0.75,
+    stagger: 0.12,
+    ease: "power3.out",
+    delay: 0.15,
+  });
+
+  // The plan takes a breath when it appears; no need to make the whole page dance.
+  const blueprintBoard = document.querySelector(".blueprint-board");
+  if (blueprintBoard) {
+    window.gsap.fromTo(
+      blueprintBoard,
+      { rotate: 1, scale: 0.97 },
+      {
+        rotate: 0,
+        scale: 1,
+        duration: 1.1,
+        ease: "power3.out",
+        delay: 0.3,
+      },
+    );
+  }
+}
+
+// Каждая точка либо ведёт к разделу, либо открывает калькулятор — без квестов и сюрпризов.
+document.querySelectorAll("[data-open-calculator]").forEach((button) => {
+  button.addEventListener("click", () => calculatorDialog.showModal());
+});
+
+const magneticLinks = [...document.querySelectorAll(".magnetic-link")];
+if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+  magneticLinks.forEach((link) => {
+    link.addEventListener("pointermove", (event) => {
+      const bounds = link.getBoundingClientRect();
+      const pullX = (event.clientX - (bounds.left + bounds.width / 2)) * 0.22;
+      const pullY = (event.clientY - (bounds.top + bounds.height / 2)) * 0.22;
+      link.style.transform = `translate(${pullX}px, ${pullY}px) scale(1.08)`;
+    });
+    link.addEventListener("pointerleave", () => {
+      link.style.transform = "translate(0, 0) scale(1)";
+    });
+  });
+}
+
+// Подсвечиваем точку рядом с тем разделом, который сейчас читают.
+const sectionObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      magneticLinks.forEach((link) => {
+        link.classList.toggle(
+          "active",
+          link.dataset.section === entry.target.id,
+        );
+      });
+    });
+  },
+  { rootMargin: "-35% 0px -45% 0px" },
+);
+["portfolio", "blueprint", "process"].forEach((sectionId) => {
+  const section = document.getElementById(sectionId);
+  if (section) sectionObserver.observe(section);
 });

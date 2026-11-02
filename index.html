@@ -10,10 +10,14 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
+    <!-- Bootstrap тут как набор готовых утилит: берём полезное, а фирменный вид оставляем своему CSS. -->
+    <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
+    <!-- Верхняя полоска показывает, сколько сайта уже пролистали. Маленькая вещь, а приятно. -->
     <div class="scroll-progress" aria-hidden="true"></div>
+    <!-- Шапка: короткий маршрут по сайту, чтобы не искать нужный раздел с фонариком. -->
     <header class="top">
       <nav class="nav wrap">
         <a class="logo" href="#top">Мастер<span>Ок</span></a>
@@ -24,6 +28,7 @@
         <a class="nav-cta" href="#contact">Обсудить проект <span>↗</span></a>
       </nav>
     </header>
+    <!-- Первый экран — знакомство с мастерской и быстрый переход к заявке. -->
     <section class="hero" id="top">
       <div class="wrap hero-content">
         <div class="eyebrow">Ремонт и строительство · Омск</div>
@@ -74,6 +79,7 @@
         ><span>Строительство домов <b>✳</b></span>
       </div>
     </section>
+    <!-- Портфолио: карточки заполняются из массива в main.js. -->
     <section class="section portfolio" id="portfolio">
       <div class="wrap">
         <div class="section-head reveal">
@@ -91,6 +97,7 @@
         <div class="grid" id="projects"></div>
       </div>
     </section>
+    <!-- Интерактивный план: точки рассказывают, что именно придумали для квартиры. -->
     <section class="blueprint-section" id="blueprint">
       <div class="wrap blueprint-layout">
         <div class="blueprint-copy reveal">
@@ -239,6 +246,55 @@
         </div>
       </div>
     </section>
+    <!-- Авторская сценка для мастерской: это новые реплики, не цитата из передачи. -->
+    <section class="banter-section">
+      <div class="wrap banter-feature">
+        <div class="banter-heading reveal">
+          <div class="kicker">Короткая сценка · «МастерОк»</div>
+          <h2 class="heading">Сначала замер.<br />Потом смета.</h2>
+          <p>
+            Небольшая сценка про наш калькулятор, стены с характером и рулетку.
+          </p>
+          <div class="banter-quote">
+            <span>С объекта передают</span
+            ><strong>«Калькулятор умный.<br />Но стены он не видел»</strong
+            ><i>↘</i>
+          </div>
+        </div>
+        <div
+          class="banter-script reveal"
+          aria-label="Авторский диалог Равшана и начальника"
+        >
+          <div class="banter-script-label">
+            <span>НОВАЯ СЦЕНКА ДЛЯ «МАСТЕРОК»</span
+            ><span>НЕ ЦИТАТА ИЗ ПЕРЕДАЧИ</span>
+          </div>
+          <div class="script-line">
+            <b>РАВШАН</b>
+            <p>
+              Насяльника, калькулятор показал цену. А стены ему кто измерил?
+            </p>
+          </div>
+          <div class="script-line script-line--jamshut">
+            <b>НАЧАЛЬНИК</b>
+            <p>
+              Никто. Он тут только цифры складывает. Стены будем уговаривать
+              сами.
+            </p>
+          </div>
+          <div class="script-line">
+            <b>РАВШАН</b>
+            <p>
+              Значит, сначала замер, потом ремонт. Сайт умный, но рулетку не
+              носит.
+            </p>
+          </div>
+          <div class="script-foot">
+            Реплики придуманы специально для сайта мастерской.
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="section promise" id="about">
       <div class="wrap promise-inner reveal">
         <div>
@@ -254,9 +310,101 @@
             ><span class="badge">✓ Фотоотчёты</span>
           </div>
         </div>
-        <a href="#contact" class="btn">Узнать стоимость ↗</a>
+        <button type="button" class="btn" id="calculator-open">
+          Рассчитать стоимость ↗
+        </button>
       </div>
     </section>
+    <dialog
+      class="calculator-dialog"
+      id="calculator-dialog"
+      aria-labelledby="calculator-title"
+    >
+      <button
+        class="calculator-close"
+        type="button"
+        aria-label="Закрыть калькулятор"
+      >
+        ×
+      </button>
+      <!-- Калькулятор даёт ориентир. Точный расчёт мастер делает после осмотра — стены пока не научились сами рассказывать секреты. -->
+      <section class="section calculator" id="calculator">
+        <div class="wrap calculator-layout">
+          <div class="calculator-intro reveal">
+            <div class="kicker">Прикидка за полминуты</div>
+            <h2 class="heading" id="calculator-title">
+              Сколько стоит ваш ремонт?
+            </h2>
+            <p>
+              Выберите основные параметры — покажем примерный диапазон. Итоговую
+              смету уточним после замера и разговора о деталях.
+            </p>
+            <div class="calculator-stamp">
+              БЕЗ РЕГИСТРАЦИИ<br />И ЛИШНИХ ЗВОНКОВ
+            </div>
+          </div>
+          <div class="calculator-card reveal">
+            <div class="calculator-fields">
+              <label
+                >Что ремонтируем<select class="form-select" id="calc-object">
+                  <option value="flat">Квартиру</option>
+                  <option value="house">Дом</option>
+                  <option value="office">Офис</option>
+                </select></label
+              ><label
+                >Тип работ<select class="form-select" id="calc-work">
+                  <option value="cosmetic">Косметический</option>
+                  <option value="capital" selected>Капитальный</option>
+                  <option value="designer">Дизайнерский</option>
+                </select></label
+              ><label class="area-field" for="calc-area"
+                >Площадь <strong><span id="calc-area-value">60</span> м²</strong
+                ><input
+                  id="calc-area"
+                  type="range"
+                  min="20"
+                  max="250"
+                  value="60"
+                  step="1" /></label
+              ><label
+                >Материалы<select class="form-select" id="calc-material">
+                  <option value="economy">Практичные</option>
+                  <option value="standard" selected>Стандарт</option>
+                  <option value="premium">Повыше классом</option>
+                </select></label
+              ><label class="calc-option"
+                ><input type="checkbox" id="calc-demolition" /><span
+                  >Добавить демонтаж старой отделки</span
+                ></label
+              >
+            </div>
+            <div class="estimate">
+              <div class="estimate-label">Предварительная оценка</div>
+              <div class="estimate-price" aria-live="polite">
+                <span id="estimate-min">—</span><i>—</i
+                ><span id="estimate-max">—</span>
+              </div>
+              <div class="estimate-caption">
+                Стоимость работ и материалов, без точной сметы
+              </div>
+              <button
+                class="btn estimate-button"
+                type="button"
+                id="calc-to-form"
+              >
+                Обсудить этот расчёт ↗
+              </button>
+            </div>
+            <p class="calculator-note">
+              Тарифы здесь примерные, для демонстрации калькулятора. На реальном
+              объекте цена зависит от состояния помещения, материалов и объёма
+              работ.
+            </p>
+          </div>
+        </div>
+      </section>
+    </dialog>
+    <!-- Форма пока демонстрационная: без сервера заявка никуда не улетает. -->
     <section class="section contact" id="contact">
       <div class="wrap contact-grid">
         <div class="reveal">
@@ -269,24 +417,43 @@
           <p><b>+7 (3812) 55-20-10</b><br />Ежедневно, 9:00–19:00</p>
         </div>
         <form class="form reveal" id="lead">
-          <input required placeholder="Ваше имя" /><input
+          <input
             required
+            id="lead-name"
+            class="form-control"
+            autocomplete="name"
+            minlength="2"
+            maxlength="60"
+            placeholder="Ваше имя"
+          /><input
+            required
+            class="form-control"
+            id="lead-phone"
             type="tel"
-            placeholder="Телефон"
-          /><select>
-            <option>Тип проекта</option>
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="+7 (___) ___-__-__"
+          /><select class="form-select" id="lead-type" required>
+            <option value="" selected disabled>Тип проекта</option>
             <option>Ремонт квартиры</option>
             <option>Строительство дома</option>
             <option>Ремонт офиса</option>
             <option>Отделочные работы</option></select
-          ><input placeholder="Бюджет, ₽" /><textarea
+          ><input
+            class="form-control"
+            id="lead-budget"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Бюджет, ₽"
+          /><textarea
+            class="form-control"
             placeholder="Коротко о задаче"
           ></textarea
           ><label class="file wide"
             >＋ Прикрепить фото
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               multiple
               hidden
               id="files" /></label
@@ -305,6 +472,7 @@
         ><a href="#top">Наверх ↑</a>
       </div>
     </footer>
+    <div class="form-hint" id="form-hint" aria-live="polite"></div>
     <div class="toast" id="toast">
       Заявка подготовлена! В демо-версии она не отправляется.
     </div>
@@ -338,6 +506,8 @@
         →
       </button>
     </dialog>
+    <!-- GSAP анимирует несколько сцен; если библиотека не загрузилась, сайт не разваливается. -->
+    <script src="assets/vendor/gsap.min.js" defer></script>
     <script src="js/main.js" defer></script>
   </body>
 </html>
